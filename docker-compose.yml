@@ -1,0 +1,100 @@
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: SmartBin_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    restart:
+      unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: SmartBin_minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ADMIN_USER: ${MINIO_ADMIN_USER}
+      MINIO_ADMIN_PASSWORD: ${MINIO_ADMIN_PASSWORD}
+    command: server /data --console-address ":9001"
+    restart:
+      unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: SmartBin_redis
+    ports:
+      - "6379:6379"
+    restart:
+      unless-stopped
+
+  backend:
+    build:
+      dockerfile: Dockerfile
+    container_name: SmartBin_backend
+    ports:
+      - "8000:8000"
+    command: uvicorn src.backend.api.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./src/backend:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ADMIN_USER}
+      MINIO_SECRET_KEY: ${MINIO_ADMIN_PASSWORD}
+      MINIO_SECURE: "false"
+    depends_on:
+      - db
+      - redis
+      - minio
+    restart: unless-stopped
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: SmartBin_celery
+    command: celery -A src.backend.services.tasks worker --loglevel=info
+    volumes:
+      - ./src/backend:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ADMIN_USER}
+      MINIO_SECRET_KEY: ${MINIO_ADMIN_PASSWORD}
+      MINIO_SECURE: "false"
+    depends_on:
+      - db
+      - redis
+      - minio
+      - backend
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: src/frontend
+      dockerfile: Dockerfile
+    container_name: SmartBin_frontend
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm start"
+    working_dir: /app
+    volumes:
+      - ./src/frontend:/app
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
