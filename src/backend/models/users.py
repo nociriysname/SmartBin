@@ -6,6 +6,7 @@ from sqlalchemy import DateTime, ForeignKey, func, String
 from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.backend.core.database.metadata import Base
 
 __all__ = ("Users",)

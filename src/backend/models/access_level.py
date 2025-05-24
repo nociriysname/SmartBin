@@ -2,6 +2,7 @@ from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID as POSTGRES_UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.backend.core.database.metadata import Base
 from src.backend.core.enums import AccessLevel
 

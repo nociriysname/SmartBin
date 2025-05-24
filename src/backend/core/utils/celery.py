@@ -1,5 +1,6 @@
 from celery import Celery
 from celery.exceptions import CeleryError
+
 from src.backend.core.config import settings
 from src.backend.core.utils.date import date_time
 

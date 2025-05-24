@@ -4,6 +4,7 @@ from typing import Any, AsyncGenerator
 import aioredis as redis
 from aioredis import Redis
 from aioredis.exceptions import RedisError
+
 from src.backend.core.config import settings
 from src.backend.core.utils.date import date_time
 

@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, UUID as POSTGRES_UUID
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.backend.core.database.metadata import Base
 
 __all__ = ("Storages",)

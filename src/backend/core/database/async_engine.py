@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
 )
+
 from src.backend.core.config import settings
 from src.backend.core.exc import HTTPError
 
