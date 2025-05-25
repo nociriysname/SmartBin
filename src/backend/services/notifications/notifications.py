@@ -33,18 +33,18 @@ class NotificationService:
         title: str,
         body: str,
     ) -> bool:
-        user = await self.user_repo.get_by_uuid(user_id, company_id)
-        if (not user.firebase_token) or (not user):
+        user = await self.user_repo.get_by_id(user_id)
+        if (not user.firebase_token) or (user.company_id != company_id):
             raise NotFoundError(
                 message=f"User {user_id} not found/FCM-Token not found",
             )
-            return False
+
+        message = messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            token=user.firebase_token,
+        )
 
         try:
-            message = messaging.Message(
-                notification=messaging.Notification(title=title, body=body),
-                token=user.firebase_token,
-            )
             response = messaging.send(message, app=self.firebase_app)
             print(f"Notification has been sent: {response}")
             return True
@@ -71,7 +71,7 @@ class NotificationService:
             raise NotFoundError(message=f"Product {product} not found")
 
         title = "Stop list timeout"
-        body = f"Product {product.name}"
+        body = f"Product {product.name} is not in stoplist this time"
         return await self.send_notification(user_id, company_id, title, body)
 
     async def notify_about_product(

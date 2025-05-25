@@ -1,119 +1,88 @@
-from typing import Annotated, Any, List, Optional, Type, TypeVar
+from typing import Annotated, List, Optional
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase
 
 from src.backend.core.database.async_engine import SessionDep
-from src.backend.core.exc.exceptions.exceptions import NotFoundError
-from src.backend.models.access_level import UserAccess
-from src.backend.models.users import Users
 from src.backend.models.warehouses import Warehouse
 
 __all__ = ("RepoWarehouse", "WarehouseRepoDep")
-
-ModelType = TypeVar("ModelType", bound=DeclarativeBase)
 
 
 class RepoWarehouse:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    @staticmethod
-    async def _get_company_id_filter(
-        stmt: Any,
-        company_id: str,
-        model: Type[ModelType],
-    ) -> Any:
-        return stmt.filter(model.company_id == company_id)
-
-    async def get_all_warehouses(
-        self,
-        company_id: str,
-        size: int = 50,
-        page: int = 0,
-        location: Optional[str] = None,
-    ) -> tuple[List[Warehouse], int]:
-        stmt = select(Warehouse).order_by(Warehouse.created_at.desk())
-        stmt = await self._get_company_id_filter(stmt, company_id, Warehouse)
-        if location:
-            stmt = stmt.filter(Warehouse.location == location)
-
-        return await self._get_paginated_list(stmt, size, page)
-
-    async def create_new_warehouse(
-        self,
-        company_id: str,
-        warehouse: Warehouse,
-        location: str,
-        coordinates: list[float],
-    ) -> Warehouse:
-        warehouse.company_id = company_id
-        warehouse.location = location
-        warehouse.longitude, warehouse.latitude = coordinates
-        self.session.add(warehouse)
-        await self.session.commit()
-        await self.session.refresh(warehouse)
-        return warehouse
-
-    async def delete_warehouse(
-        self,
-        company_id: str,
-        warehouse_id: str,
-    ) -> None:
-        warehouse = self.get_by_id(warehouse_id, company_id)
-
-        if not warehouse:
-            raise NotFoundError("Warehouse not found")
-
-        await self.session.delete(warehouse)
-        await self.session.commit()
-
-    async def update_warehouse_info(
-        self,
-        company_id: str,
-        warehouse_id: str,
-        location: Optional[str] = None,
-        coordinates: Optional[list[float]] = None,
-    ) -> Warehouse:
-        warehouse = await self.get_by_id(company_id, warehouse_id)
-        if location:
-            warehouse.location = location
-
-        if coordinates:
-            warehouse.longitude, warehouse.latitude = coordinates
-
-        if not warehouse:
-            raise NotFoundError(message="Warehouse not found")
-
-        await self.session.commit()
-        await self.session.refresh(warehouse)
-        return warehouse
-
-    async def get_warehouse_userroles(
-        self,
-        warehouse_id: str,
-        company_id: str,
-    ) -> List[Users]:
-        warehouse = await self.get_by_id(warehouse_id, company_id)
-        if not warehouse:
-            raise NotFoundError("Warehouse not found")
-
-        stmt = await self._get_company_id_filter(
-            select(Users)
-            .join(UserAccess)
-            .filter(UserAccess.warehouse_id == warehouse_id),
-            company_id,
-            Users,
+    async def get_by_id(self, warehouse_id: str) -> Optional[Warehouse]:
+        return await self.session.scalar(
+            select(Warehouse).filter(Warehouse.warehouse_id == warehouse_id),
         )
-        result = await self.session.scalars(stmt)
-        return list(result.all())
 
-    async def get_by_id(self, warehouse_id: str, company_id: str) -> Warehouse:
-        stmt = select(Warehouse).where(Warehouse.warehouse_id == warehouse_id)
-        stmt = await self._get_company_id_filter(stmt, company_id, Warehouse)
-        return await self.session.scalar(stmt)
+    async def insert(self, warehouse: Warehouse) -> Warehouse:
+        self.session.add(warehouse)
+        await self.session.flush()
+        await self.session.refresh(warehouse)
+        return warehouse
+
+    async def delete(self, warehouse_id: str) -> None:
+        warehouse = await self.get_by_id(warehouse_id)
+        await self.session.delete(warehouse)
+        await self.session.flush()
+
+    async def update(
+        self,
+        warehouse_id: str,
+        location: Optional[str],
+        latitude: Optional[float],
+        longitude: Optional[float],
+    ) -> Optional[Warehouse]:
+        warehouse = await self.get_by_id(warehouse_id)
+
+        update_data = {}
+
+        if location is not None:
+            update_data["location"] = location
+
+        if latitude is not None:
+            update_data["latitude"] = latitude
+
+        if longitude is not None:
+            update_data["longitude"] = longitude
+
+        if update_data:
+            await self.session.execute(
+                update(Warehouse)
+                .filter(Warehouse.warehouse_id == warehouse_id)
+                .values(**update_data),
+            )
+            await self.session.flush()
+            await self.session.refresh(warehouse)
+
+        return warehouse
+
+    async def get_all(
+        self,
+        company_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[List[Warehouse], int]:
+        query = (
+            select(Warehouse)
+            .filter(Warehouse.company_id == company_id)
+            .limit(limit)
+            .offset(offset)
+        )
+        users_result = await self.session.scalars(query)
+
+        count_query = (
+            select(func.count())
+            .select_from(Warehouse)
+            .filter(Warehouse.company_id == company_id)
+        )
+        total = await self.session.scalar(count_query)
+
+        return list(users_result.all()), total
 
 
 async def create_warehouse_repo(session: SessionDep) -> RepoWarehouse:

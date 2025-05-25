@@ -21,7 +21,7 @@ from src.backend.schemes.authy import (
     AuthPushDTO,
 )
 from src.backend.schemes.employee import EmployeeModelDTO
-from src.backend.services.auth.notifications import (
+from src.backend.services.notifications.notifications import (
     NotificationService,
     NotificationServiceDep,
 )
