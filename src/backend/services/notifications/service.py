@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.backend.core.config import settings
 from src.backend.core.database.async_engine import SessionDep
 from src.backend.core.exc.exceptions.exceptions import NotFoundError
-from src.backend.repos.storage_repo import RepoStorage, StorageRepoDep
-from src.backend.repos.user_repo import RepoUsers, UsersReposDep
+from src.backend.repos.storages import RepoStorage, StorageRepoDep
+from src.backend.repos.users import RepoUsers, UsersReposDep
+from src.backend.services.notifications.deps import NotificationsUserDep
 
 
-__all__ = ("NotificationService", "NotificationServiceDep")
+__all__ = ("NotificationService",
+           "NotificationServiceDep")
 
 
 class NotificationService:
@@ -28,17 +30,11 @@ class NotificationService:
 
     async def send_notification(
         self,
-        user_id: str,
+        user: NotificationsUserDep,
         company_id: str,
         title: str,
         body: str,
     ) -> bool:
-        user = await self.user_repo.get_by_id(user_id)
-        if (not user.firebase_token) or (user.company_id != company_id):
-            raise NotFoundError(
-                message=f"User {user_id} not found/FCM-Token not found",
-            )
-
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
             token=user.firebase_token,

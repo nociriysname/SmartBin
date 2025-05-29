@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.backend.core.database.async_engine import SessionDep
+from src.backend.models.access_level import UserAccess
 from src.backend.models.users import Users
 
 __all__ = ("RepoUsers", "UsersReposDep")
@@ -43,6 +44,19 @@ class RepoUsers:
             .filter(Users.uuid == uuid, Users.company_id == company_id),
         )
 
+    async def get_user_access(
+            self,
+            user_id: str,
+            warehouse_id: str,
+    ) -> Optional[UserAccess]:
+        query = (
+            select(UserAccess).filter(UserAccess.id == user_id),
+        )
+        if warehouse_id:
+            query = query.filter(UserAccess.warehouse_id == warehouse_id)
+
+        return await self.session.scalar(query)
+
     async def get_by_auth(
         self,
         number: str,
@@ -64,17 +78,8 @@ class RepoUsers:
 
     async def insert(
         self,
-        number: str,
-        firebase_token: Optional[str],
-        name: str,
-        company_id: str,
+        user: Users,
     ) -> Users:
-        user = Users(
-            number=number,
-            name=name,
-            firebase_token=firebase_token,
-            company_id=company_id,
-        )
         self.session.add(user)
         await self.session.flush()
         await self.session.refresh(user)

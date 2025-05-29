@@ -4,9 +4,9 @@ from fastapi import Depends
 
 from src.backend.core.exc.exceptions.exceptions import NotFoundError
 from src.backend.models.users import Users
-from src.backend.repos.user_repo import UsersReposDep
+from src.backend.repos.users import UsersReposDep
 
-__all__ = ("NotificationsDep",)
+__all__ = ("NotificationsUserDep",)
 
 
 async def get_users_notifications(
@@ -18,7 +18,10 @@ async def get_users_notifications(
     if (not user) or (user.company_id != company_id):
         raise NotFoundError(message=f"User {user_id} not found")
 
+    if not user.firebase_token:
+        raise NotFoundError(message=f"User {user_id} have not firebase token")
+
     return user
 
 
-NotificationsDep = Annotated[Users, Depends(get_users_notifications)]
+NotificationsUserDep = Annotated[Users, Depends(get_users_notifications)]

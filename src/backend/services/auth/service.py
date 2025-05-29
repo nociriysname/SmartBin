@@ -14,14 +14,13 @@ from src.backend.core.exc.exceptions.exceptions import (
 )
 from src.backend.core.utils.jwt import create_jwt
 from src.backend.models.users import Users
-from src.backend.repos.user_repo import RepoUsers, UsersReposDep
+from src.backend.repos.users import RepoUsers, UsersReposDep
 from src.backend.schemes.authy import (
     AuthPushCodeDTO,
     AuthPushCodeTokenResponseDTO,
     AuthPushDTO,
 )
-from src.backend.schemes.employee import EmployeeModelDTO
-from src.backend.services.notifications.notifications import (
+from src.backend.services.notifications.service import (
     NotificationService,
     NotificationServiceDep,
 )
@@ -42,7 +41,7 @@ class AuthenticationService:
         self.notifications_service = notifications_service
 
     async def request_code(self, data: AuthPushDTO, company_id: str) -> str:
-        user = await self.user_repo.get_by_number(data.number, company_id)
+        user = await self.user_repo.get_by_number(data.number)
         if not user:
             raise NotFoundError(message="User not found")
 
@@ -63,11 +62,9 @@ class AuthenticationService:
             title,
             body,
         ):
-            await self.user_repo.update_firetoken(
-                user.number,
-                company_id,
+            await self.user_repo.update_token_by_id(
+                user.uuid,
                 authy_code,
-                title,
             )
 
             return "Code was sent correctly"
@@ -77,9 +74,8 @@ class AuthenticationService:
     async def verify_code(
         self,
         data: AuthPushCodeDTO,
-        company_id: str,
     ) -> AuthPushCodeTokenResponseDTO:
-        user = await self.user_repo.get_by_number(data.number, company_id)
+        user = await self.user_repo.get_by_number(data.number)
 
         if not user:
             raise NotFoundError(message="User not found")
@@ -101,34 +97,12 @@ class AuthenticationService:
             )
 
         jwt_token = create_jwt(user)
-        await self.user_repo.update_firetoken(user.number, company_id, None)
+        await self.user_repo.update_token_by_id(user.uuid, None)
         return AuthPushCodeTokenResponseDTO(
             access_token=jwt_token,
             token_type="bearer",
-            expires_in=settings.jwt_expires_in,
+            expires_in=settings.jwt_expires,
         )
-
-    async def updating(
-        self,
-        user_id: str,
-        company_id: str,
-        data: EmployeeModelDTO,
-    ) -> None:
-        user = await self.user_repo.get_by_uuid(user_id, company_id)
-        if not user:
-            raise NotFoundError(message="User not found")
-
-        if data.name is not None:
-            user.name = data.name
-
-        if data.number is not None:
-            user.number = str(data.number)
-
-        if data.company_id is not None:
-            user.company_id = company_id
-
-        await self.session.commit()
-        await self.session.refresh(user)
 
 
 async def create_authentication_service(

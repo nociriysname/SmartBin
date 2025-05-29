@@ -11,6 +11,7 @@ __all__ = (
     "ForbiddenError",
     "NotFoundError",
     "UnauthorizedError",
+    "UniqueViolationError",
 )
 
 
@@ -69,6 +70,11 @@ class ForbiddenError(HTTPError):
 class NotFoundError(HTTPError):
     def __init__(self, message: str = "Not Found"):
         super().__init__(404, message)
+
+
+class UniqueViolationError(HTTPError):
+    def __init__(self, message: str = "Unique Violation"):
+        super().__init__(409, message)
 
 
 class ValidationError(HTTPError):

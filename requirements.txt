@@ -16,3 +16,4 @@ protobuf==5.29.4
 google-api-python-client==2.169.0
 pytz==2025.2
 redis==5.0.8
+pandas==2.2.3
