@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 from uuid import uuid4
 
+from aioredis import Redis
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +12,7 @@ from src.backend.core.exc.exceptions.exceptions import (ForbiddenError,
                                                         NotFoundError,
                                                         UniqueViolationError)
 from src.backend.core.utils.dto_refactor import to_dto
+from src.backend.core.utils.redis import get_redis_client
 from src.backend.models.access_level import UserAccess
 from src.backend.models.users import Users
 from src.backend.repos.companies import CompanyRepoDep, RepoCompany
@@ -38,6 +40,7 @@ class UserService:
             storage_repo: RepoStorage,
             warehouse_repo: RepoWarehouse,
             notification_service: NotificationService,
+            redis_client: Redis,
     ):
         self.session = session
         self.user_repo = user_repo
@@ -45,6 +48,7 @@ class UserService:
         self.storage_repo = storage_repo
         self.warehouse_repo = warehouse_repo
         self.notification_service = notification_service
+        self.redis_client = redis_client
         self.first_access_level = (AccessLevel.employee,
                                    AccessLevel.regional_manager,
                                    )
@@ -150,6 +154,9 @@ class UserService:
         await self.session.flush()
         await self.session.refresh(user)
 
+        async with self.redis_client as redis:
+            await redis.delete(f"user:{user_id}")
+
     async def delete_user(
             self,
             creator: CEODep | RegManagerDep,
@@ -189,6 +196,10 @@ class UserService:
 
         self.session.add(access)
         await self.session.flush()
+        async with self.redis_client as redis:
+            await redis.delete(
+                f"access:{user_id}:{company_id}:{access.warehouse_id}")
+            await redis.delete(f"user:{user_id}")
 
 
 async def get_users_service(
@@ -198,6 +209,7 @@ async def get_users_service(
         storage_repo: StorageRepoDep,
         warehouse_repo: WarehouseRepoDep,
         notification_service: NotificationServiceDep,
+        redis_client: Annotated[Redis, Depends(get_redis_client)],
 ) -> UserService:
     return UserService(
         session=session,
@@ -206,6 +218,7 @@ async def get_users_service(
         storage_repo=storage_repo,
         warehouse_repo=warehouse_repo,
         notification_service=notification_service,
+        redis_client=redis_client,
     )
 
 UserServiceDep = Annotated[UserService, Depends(get_users_service)]

@@ -9,7 +9,7 @@ __all__ = ("FileResponseDTO", "XLSProductDTO")
 
 
 class FileResponseDTO(BaseModel):
-    file_id: str = Field(description="Идентифатор файла")
+    file_id: str = Field(description="ID файла")
     file_url: str = Field(description="URL файла Minio")
     file_type: str = Field(description="Тип файла(image, xls)")
     warehouse_id: str = Field(description="ID склада")
@@ -23,7 +23,7 @@ class XLSProductDTO(BaseModel):
     barcode: str = Field(max_length=255, description="Штрихкод продукта")
     item_type: ProductType = Field(..., description="Тип продукта")
     dekart_parameters: List[float] = Field(
-        description="Картезианские параметры",
+        description="Параметры товара",
     )
     product_link: Optional[str] = Field(
         None,
@@ -33,6 +33,6 @@ class XLSProductDTO(BaseModel):
     @field_validator("dekart_parameters")
     def validate_dekart_parameters(cls, value: List[float]) -> List[float]:
         if not value:
-            raise ValueError("Картезианские параметры не могут быть пустыми")
+            raise ValueError("Параметры товара не могут быть пустыми")
 
         return value

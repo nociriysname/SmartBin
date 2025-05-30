@@ -58,6 +58,15 @@ class RepoStorage:
             ),
         )
 
+    async def get_shelves_by_company(self, company_id: str) -> List[Shelves]:
+        query = (
+            select(Shelves)
+            .join(Storages, Storages.storage_id == Shelves.storage_id)
+            .where(Storages.company_id == company_id)
+        )
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
     async def insert_storage(self, storage: Storages) -> Storages:
         self.session.add(storage)
         await self.session.flush()

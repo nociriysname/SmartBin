@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from src.backend.core.database.async_engine import SessionDep
 from src.backend.models.access_level import UserAccess
+from src.backend.models.companies import Companies
 from src.backend.models.users import Users
 
 __all__ = ("RepoUsers", "UsersReposDep")
@@ -49,13 +50,35 @@ class RepoUsers:
             user_id: str,
             warehouse_id: str,
     ) -> Optional[UserAccess]:
-        query = (
-            select(UserAccess).filter(UserAccess.id == user_id),
-        )
+        query = select(UserAccess).filter(UserAccess.id == user_id)
         if warehouse_id:
             query = query.filter(UserAccess.warehouse_id == warehouse_id)
 
         return await self.session.scalar(query)
+
+    async def check_user_access_combined(
+            self, user_id: str, company_id: str, warehouse_id: str,
+    ) -> dict:
+        query = select(Companies.owner_id, UserAccess.access_level)
+
+        query = query.outerjoin(
+            UserAccess,
+            (UserAccess.id == user_id) & (
+                UserAccess.warehouse_id == warehouse_id,
+            ),
+        )
+
+        query = query.join(Companies, Companies.company_id == company_id)
+
+        query = query.where(Companies.company_id == company_id)
+
+        result = await self.session.execute(query)
+        row = result.fetchone()
+
+        return {
+            "owner_id": row.owner_id if row else None,
+            "access_level": row.access_level if row else None,
+        }
 
     async def get_by_auth(
         self,
