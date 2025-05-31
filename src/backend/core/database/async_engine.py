@@ -3,11 +3,8 @@ from typing import Annotated
 
 from fastapi.params import Depends
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
+                                    create_async_engine)
 
 from src.backend.core.config import settings
 from src.backend.core.exc import HTTPError

@@ -39,9 +39,9 @@ services:
     container_name: SmartBin_backend
     ports:
       - "8000:8000"
-    command: uvicorn src.backend.api.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn src.backend.api.main:src --host 0.0.0.0 --port 8000
     volumes:
-      - ./src/backend:/app
+      - ./src/backend:/src
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -63,7 +63,7 @@ services:
     container_name: SmartBin_celery
     command: celery -A src.backend.services.tasks worker --loglevel=info
     volumes:
-      - ./src/backend:/app
+      - ./src/backend:/src
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -87,9 +87,9 @@ services:
     ports:
       - "3000:3000"
     command: sh -c "npm install && npm start"
-    working_dir: /app
+    working_dir: /src
     volumes:
-      - ./src/frontend:/app
+      - ./src/frontend:/src
     depends_on:
       - backend
     restart: unless-stopped

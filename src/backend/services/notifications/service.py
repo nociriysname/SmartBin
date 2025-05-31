@@ -11,7 +11,6 @@ from src.backend.repos.storages import RepoStorage, StorageRepoDep
 from src.backend.repos.users import RepoUsers, UsersReposDep
 from src.backend.services.notifications.deps import NotificationsUserDep
 
-
 __all__ = ("NotificationService",
            "NotificationServiceDep")
 

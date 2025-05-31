@@ -4,11 +4,16 @@ from uuid import uuid4
 
 from aioredis import Redis
 from fastapi import Depends
+from phonenumbers import (format_number,
+                          NumberParseException,
+                          parse,
+                          PhoneNumberFormat)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.backend.core.database.async_engine import SessionDep
 from src.backend.core.enums import AccessLevel
-from src.backend.core.exc.exceptions.exceptions import (ForbiddenError,
+from src.backend.core.exc.exceptions.exceptions import (BadRequestError,
+                                                        ForbiddenError,
                                                         NotFoundError,
                                                         UniqueViolationError)
 from src.backend.core.utils.dto_refactor import to_dto
@@ -82,10 +87,16 @@ class UserService:
             if (not warehouse) or (warehouse.company_id != company_id):
                 raise NotFoundError(f"Warehouse {warehouse_id} not found")
 
-        if await self.user_repo.check_exist_number(data.number):
-            raise UniqueViolationError(
-                f"User with number {data.number} already exists",
+        try:
+            parsed_number = parse(data.number, None)
+            normalized_number = format_number(
+                parsed_number, PhoneNumberFormat.E164,
             )
+        except NumberParseException:
+            raise BadRequestError("Incorrect format of number-phone")
+
+        if await self.user_repo.check_exist_number(normalized_number):
+            raise UniqueViolationError("User with this number already exist")
 
         user = Users(
             uuid=str(uuid4()),
