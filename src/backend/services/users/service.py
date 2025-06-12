@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional, Tuple
 from uuid import uuid4
 
 from aioredis import Redis
@@ -71,11 +71,11 @@ class UserService:
     ) -> EmployeeResponseDTO:
         if access_level == AccessLevel.CEO \
                 and creator.access_level != AccessLevel.CEO:
-            raise ForbiddenError("Только CEO может назначать роль CEO")
+            raise ForbiddenError("Only CEO can create new CEO role")
 
         if access_level in self.first_access_level \
                 and creator.access_level not in self.second_access_level:
-            raise ForbiddenError("Недостаточно прав для создания пользователя")
+            raise ForbiddenError("Insufficient permission for creating")
 
         company = await self.company_repo.get_by_id(company_id)
 
@@ -179,7 +179,7 @@ class UserService:
         if (user.company_id != company_id) or (not user):
             raise NotFoundError(f"User {user_id} not found")
 
-        await self.user_repo.delete(user)
+        await self.user_repo.delete(user_id)
         return True
 
     async def set_user_access(
@@ -211,6 +211,31 @@ class UserService:
             await redis.delete(
                 f"access:{user_id}:{company_id}:{access.warehouse_id}")
             await redis.delete(f"user:{user_id}")
+
+    async def get_user_access(self, user_id: str) -> List[UserAccess] | None:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            raise NotFoundError(f"User {user_id} not found")
+
+        return await self.user_repo.get_user_access(user_id, None)
+
+    async def get_user_by_id(self, user_id: str, company_id: str) -> Users:
+        user = await self.user_repo.get_by_id(user_id)
+        if (user.company_id != company_id) or (not user):
+            raise NotFoundError(f"User {user_id} not found")
+
+        return user
+
+    async def get_all_users(
+            self, company_id: str, limit: int, offset: int,
+    ) -> Tuple[List[Users], int]:
+        users, count = await self.user_repo.get_all(
+            company_id, limit=limit, offset=offset,
+        )
+        if count == 0:
+            raise NotFoundError("No users in company found")
+
+        return users, count
 
 
 async def get_users_service(

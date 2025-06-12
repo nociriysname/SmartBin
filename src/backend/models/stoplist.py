@@ -1,5 +1,4 @@
 from datetime import datetime
-from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import ENUM, UUID as POSTGRES_UUID
@@ -16,11 +15,11 @@ __all__ = ("StopList",)
 class StopList(Base, AsyncAttrs):
     __tablename__ = "stop_list"
 
-    stop_list_id: Mapped[str] = mapped_column(
+    warehouse_id: Mapped[str] = mapped_column(
         POSTGRES_UUID(as_uuid=True),
+        ForeignKey("warehouses.warehouse_id", ondelete="CASCADE"),
         primary_key=True,
         nullable=False,
-        default=uuid4,
     )
 
     product_id: Mapped[str] = mapped_column(
@@ -42,3 +41,4 @@ class StopList(Base, AsyncAttrs):
     )
 
     product = relationship("Products", back_populates="stop_list")
+    warehouse = relationship("Warehouses", back_populates="stop_list")

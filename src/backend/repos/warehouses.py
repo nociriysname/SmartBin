@@ -3,6 +3,7 @@ from typing import Annotated, List, Optional
 from fastapi import Depends
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped
 
 from src.backend.core.database.async_engine import SessionDep
 from src.backend.models.warehouses import Warehouse
@@ -18,6 +19,12 @@ class RepoWarehouse:
         return await self.session.scalar(
             select(Warehouse).filter(Warehouse.warehouse_id == warehouse_id),
         )
+
+    async def get_company_by_warehouse(
+            self, warehouse_id: str,
+    ) -> Mapped[str]:
+        data = await self.get_by_id(warehouse_id)
+        return data.company_id
 
     async def insert(self, warehouse: Warehouse) -> Warehouse:
         self.session.add(warehouse)

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Annotated, Union
+from typing import Annotated, List, Tuple, Union
 from uuid import uuid4
 
 from fastapi import Depends
@@ -51,6 +51,26 @@ class WarehouseService:
             raise ForbiddenError("User have no permission")
 
         return to_dto(warehouse, StorageResponseDTO)
+
+    async def get_all_warehouses(
+        self,
+        user: CEODep,
+        company_id: str,
+        limit: int,
+        offset: int,
+    ) -> Tuple[List[Warehouse], int]:
+        company = await self.company_repo.get_by_id(company_id)
+        if (company.owner_id != user.uuid) or (not company):
+            raise NotFoundError(f"Company {company_id} not found")
+
+        warehouses, count = await self.warehouse_repo.get_all(
+            company_id, limit, offset,
+        )
+
+        if count == 0:
+            raise NotFoundError("No warehouses found")
+
+        return warehouses, count
 
     async def create_warehouse(
         self,

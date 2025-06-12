@@ -140,10 +140,10 @@ class RepoStorage:
 
     async def get_stoplist_entry_by_id(
         self,
-        stoplist_id: str,
+        warehouse_id: str,
     ) -> Optional[StopList]:
         return await self.session.scalar(
-            select(StopList).filter(StopList.stop_list_id == stoplist_id),
+            select(StopList).filter(StopList.warehouse_id == warehouse_id),
         )
 
 
